@@ -261,6 +261,10 @@ async function fetchAndCachePlans(groups) {
     }
 }
 
+function generateICalendar(){
+    
+}
+
 app.get('/api/groups', async (req, res) => {
     try {
         try {

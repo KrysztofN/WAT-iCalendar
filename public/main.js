@@ -63,7 +63,15 @@ function displayQR(){
     
     generatedButton.addEventListener('click', () => {
         document.querySelector('.QR-Code').style.display = 'block';
+        
+        document.getElementById("qrcode").innerHTML = '';
+        new QRCode(document.getElementById("qrcode"), {
+            text: "http://jindo.dev.naver.com/collie",
+            width: 128,
+            height: 128,
+        });
     });
+
 }
 
 document.addEventListener('DOMContentLoaded', () => {
