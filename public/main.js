@@ -28,21 +28,41 @@ async function fetchAndPopulateGroups(){
     }
 }
 
+async function fetchAndPopulatePlans(){
+    try {
+        const response = await fetch('api/plans');
+    } catch(err){
+        console.log(err.message);
+    }
+}
+
+let selectedGroup = null;
+
 function handleGroupSelection(){
     const dropdown = document.getElementById('group-select');
     dropdown.addEventListener('change', (event) => {
-        const selectedGroup = event.target.value;
-        if(selectedGroup) {
-            console.log(selectedGroup);
-        }
+        selectedGroup = event.target.value;
+        document.querySelector('.QR-Code').style.display = 'none';
     })
 }
 
 function setupDownloadButton() {
-    const downloadButton = document.querySelector('button.step');
+    const downloadButton = document.querySelector('button.step1');
     
     downloadButton.addEventListener('click', () => {
-        window.location.href = '/api/download-calendar';
+        if(selectedGroup){
+            window.location.href = '/api/download-calendar';
+        } else{
+            alert('Najpierw wybierz grupę');
+        }
+    });
+}
+
+function displayQR(){
+    const generatedButton = document.querySelector('button.step2');
+    
+    generatedButton.addEventListener('click', () => {
+        document.querySelector('.QR-Code').style.display = 'block';
     });
 }
 
@@ -50,4 +70,5 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchAndPopulateGroups();
     handleGroupSelection();
     setupDownloadButton();
+    displayQR();
 });
