@@ -1,0 +1,22 @@
+body {
+    background-color: #EC7FA9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+.form-block{
+    min-width: 400px;;
+    max-width: 400px;
+    min-height: 500px;
+    max-height: 700px;
+    height: auto;
+    object-fit: contain;
+    background-color: #FFB8E0;
+    padding: 10px;
+    border-radius: 20px;
+    position: relative;
+}
