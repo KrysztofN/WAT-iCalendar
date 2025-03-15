@@ -1,0 +1,77 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(90deg, rgba(190,89,133,1) 0%, rgba(128,0,56,1) 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+.form-block{
+    margin: 20px;
+    background-color: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.form-block h1{
+    color: var(--primary-color);
+    margin-bottom: 30px;
+    font-size: 28px;
+}
+
+label {
+    display: block;
+    margin-bottom: 15px;
+    color: black;
+    font-size: 18px;
+}
+
+select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 25px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+    outline: none;
+    cursor: pointer;
+    color: black;
+}
+
+.step {
+    width: 100%;
+    background-color: #FFB8E0 ;
+    padding: 15px;
+    border-radius: 8px;
+    border-style: none;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    transition: transform 0.3s;
+    cursor: pointer;
+    color: black;
+}
+
+.step:hover {
+    transform: translateY(-3px);
+}
+
+.star {
+    padding: 10px;
+    border-radius:  6px;
+    margin:  20px 0;
+    font-weight: bold;
+    animation: pulse 2s infinite
+}
+
+
+.github-button-container {
+    padding: 10px 0 20px 0;
+}
