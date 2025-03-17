@@ -77,8 +77,9 @@ function displayQR(){
 
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     fetchAndPopulateGroups();
+    fetchAndPopulatePlans();
     handleGroupSelection();
     downloadCalendar();
     displayQR();
