@@ -1,0 +1,38 @@
+{
+    "vcalendar": {
+      "version": "2.0",
+      "prodid": "-//KrysztofN//iCalendar//EN",
+      "calscale": "GREGORIAN",
+      "vtimezone": {
+        "tzid": "Europe/Warsaw",
+        "last_modified": "[LAST_MODIFIED]",
+        "tzurl": "https://www.tzurl.org/zoneinfo-outlook/Europe/Warsaw",
+        "x_lic_location": "Europe/Warsaw",
+        "daylight": {
+          "tzname": "CEST",
+          "tzoffsetfrom": "+0100",
+          "tzoffsetto": "+0200",
+          "dtstart": "19700329T020000",
+          "rrule": "FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU"
+        },
+        "standard": {
+          "tzname": "CET",
+          "tzoffsetfrom": "+0200",
+          "tzoffsetto": "+0100",
+          "dtstart": "19701025T030000",
+          "rrule": "FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU"
+        }
+      },
+      "vevents": [
+        {
+          "dtstamp": "[DTSTAMP]",
+          "uid": "[UID]",
+          "dtstart": "[DTSTART]",
+          "dtend": "[DTEND]",
+          "summary": "[SUMMARY]",
+          "description": "[DESCRIPTION]",
+          "location": "[LOCATION]"
+        }
+      ]
+    }
+  }

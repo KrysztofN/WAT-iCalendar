@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const express = require('express');
 const cors = require('cors');
+const puppeteer = require('puppeteer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -75,129 +76,141 @@ async function extractGroupPlan(id) {
     const baseUrl = 'https://planzajec.wcy.wat.edu.pl/pl/rozklad?grupa_id=';
     const targetUrl = baseUrl.concat(id);
     
+    let browser = null;
+    
     try {
-      console.log(`Fetching plan for group ${id}...`);
-      const response = await axiosInstance.get(targetUrl);
-      const html = response.data;
-      const $ = cheerio.load(html);
-      const groupPlan = {
-        id: id,
-        days: {}
-      };
+      console.log(`Fetching plan for group ${id} using Puppeteer...`);
+      browser = await puppeteer.launch({
+        headless: 'new',
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
       
-      $('.rozklad_container .day_v1').each((index, dayElement) => {
-        const dayName = $(dayElement).find('.day_name span').text().trim();
-        
-        groupPlan.days[dayName] = {
-          timeBlocks: [],
-          dates: []
+      const page = await browser.newPage();
+      
+      await page.setDefaultNavigationTimeout(60000);
+      
+      await page.goto(targetUrl, { waitUntil: 'networkidle0' });
+      
+      await page.waitForSelector('.block_nr', { timeout: 10000 });
+      
+      const groupPlan = await page.evaluate(() => {
+        const plan = {
+          id: new URLSearchParams(window.location.search).get('grupa_id'),
+          blocks: {},
+          days: {}
         };
         
-        $(dayElement).find('.block_nr').each((blockIndex, blockElement) => {
-          const blockNumber = $(blockElement).find('.nr').text().trim();
-          const startTime = $(blockElement).find('.hr1').text().trim();
-          const endTime = $(blockElement).find('.hr2').text().trim();
-          
-          groupPlan.days[dayName].timeBlocks.push({
-            blockNumber: blockNumber,
-            startTime: startTime,
-            endTime: endTime
-          });
+        document.querySelectorAll('.block_nr').forEach(element => {
+          const blockClass = element.className;
+          const blockMatch = blockClass.match(/block(\d+)/);
+          if (blockMatch) {
+            const blockNumber = blockMatch[1];
+            const startTime = element.querySelector('.hr1')?.textContent || '';
+            const endTime = element.querySelector('.hr2')?.textContent || '';
+            
+            plan.blocks[`block${blockNumber}`] = {
+              number: blockNumber,
+              startTime: startTime,
+              endTime: endTime
+            };
+          }
         });
         
-        $(dayElement).find('.days .day').each((dateIndex, dateElement) => {
-          const dateClass = $(dateElement).attr('class');
-          const dateMatch = dateClass ? dateClass.match(/(\d{4}_\d{2}_\d{2})/) : null;
-          let dateString = '';
+        document.querySelectorAll('.day_v1').forEach(dayContainer => {
+          const dayName = dayContainer.querySelector('.day_name span')?.textContent || '';
           
-          if (dateMatch) {
-            dateString = dateMatch[1].replace(/_/g, '-');
-          }
-          
-          const day = $(dateElement).find('.date1').text().trim();
-          const month = $(dateElement).find('.date2').text().trim();
-          
-          const dateObj = {
-            date: dateString,
-            displayDate: `${day} ${month}`,
-            blocks: []
-          };
-          
-          $(dateElement).find('.blocks .block').each((blockIndex, blockElement) => {
-            if ($(blockElement).attr('style')) {
-              const title = $(blockElement).attr('title') || '';
-              const blockContent = $(blockElement).html() || '';
+          dayContainer.querySelectorAll('.days .day').forEach(dayElement => {
+            const dayClass = dayElement.className;
+            const dateMatch = dayClass.match(/(\d{4}_\d{2}_\d{2})/);
+            
+            if (dateMatch) {
+              const dateString = dateMatch[1];
+              const [year, month, day] = dateString.split('_');
+              const formattedDate = `${year}-${month}-${day}`;
               
-              const blockClass = $(blockElement).attr('class');
-              const blockMatch = blockClass ? blockClass.match(/block(\d+)/) : null;
-              const blockNumber = blockMatch ? blockMatch[1] : '';
+              plan.days[formattedDate] = {
+                date: formattedDate,
+                dayName: dayName,
+                blocks: {}
+              };
               
-              let courseName = '';
-              let lectureType = '';
-              let professor = '';
-              let shortName = '';
-              let room = '';
-              let professorCode = '';
-              
-              if (title) {
-                const titleParts = title.split(' - ');
-                if (titleParts.length >= 1) courseName = titleParts[0].trim();
-                if (titleParts.length >= 2) lectureType = titleParts[1].replace(/[\(\)]/g, '').trim();
-                if (titleParts.length >= 3) professor = titleParts[2].trim();
-              }
-              
-              if (blockContent) {
-                const contentParts = blockContent.split('<br>');
-                if (contentParts.length >= 1) shortName = contentParts[0].trim();
+              dayElement.querySelectorAll('.blocks .block').forEach(blockElement => {
+                const blockClass = blockElement.className;
+                const blockMatch = blockClass.match(/block(\d+)/);
                 
-                if (contentParts.length >= 3) room = contentParts[2].trim();
-                
-                if (contentParts.length >= 4) {
-                  const profCodeMatch = contentParts[3].match(/([A-Za-z]+)\[(\d+)\]/);
-                  if (profCodeMatch) {
-                    professorCode = profCodeMatch[0];
+                if (blockMatch) {
+                  const blockNumber = blockMatch[1];
+                  const blockId = `block${blockNumber}`;
+                  
+                  const blockContent = blockElement.innerHTML;
+                  const hasContent = blockContent && blockContent.trim() !== '';
+                  
+                  if (hasContent) {
+                    const title = blockElement.getAttribute('title') || '';
+                    
+                    let subject = '', type = '', teacher = '';
+                    
+                    if (title) {
+                      const titleParts = title.split(' - ');
+                      subject = titleParts[0] || '';
+                      type = titleParts[1] ? titleParts[1].replace(/[()]/g, '') : '';
+                      teacher = titleParts[2] || '';
+                    }
+
+                    
+                    const textLines = blockContent.split('<br>');
+                    
+                    const subjectCode = textLines[0] || ''
+                    const typeShort = textLines[1] ? textLines[1].replace(/[()]/g, '') : '';
+                    const room = textLines[2] || '';
+                    const teacherShort = textLines[3] || '';
+                    
+                    plan.days[formattedDate].blocks[blockId] = {
+                      blockNumber: blockNumber,
+                      subject: subject,
+                      type: type,
+                      teacher: teacher,
+                      subjectCode: subjectCode,
+                      typeShort: typeShort,
+                      room: room,
+                      teacherShort: teacherShort,
+                      title: title,
+                      startTime: plan.blocks[blockId]?.startTime,
+                      endTime: plan.blocks[blockId]?.endTime
+                    };
+                  } else {
+                    plan.days[formattedDate].blocks[blockId] = {
+                      blockNumber: blockNumber,
+                      isEmpty: true,
+                      startTime: plan.blocks[blockId]?.startTime,
+                      endTime: plan.blocks[blockId]?.endTime
+                    };
                   }
                 }
-              }
-              
-              const backgroundColor = $(blockElement).attr('style')
-                ? $(blockElement).attr('style').match(/background-color:(#[A-Fa-f0-9]+)/)
-                : null;
-              const bgColor = backgroundColor ? backgroundColor[1] : '';
-              
-              dateObj.blocks.push({
-                blockNumber: blockNumber,
-                title: title,
-                courseName: courseName,
-                lectureType: lectureType,
-                professor: professor,
-                shortName: shortName,
-                room: room,
-                professorCode: professorCode,
-                backgroundColor: bgColor,
-                rawContent: blockContent.replace(/<br>/g, ' | ')
               });
             }
           });
-          
-          if (dateObj.blocks.length > 0) {
-            groupPlan.days[dayName].dates.push(dateObj);
-          }
         });
+        
+        return plan;
       });
       
-      console.log(`Successfully fetched plan for group ${id}`);
       return groupPlan;
-    } catch (error) {
-      console.error(`Error extracting plan for group ${id}:`, error.message);
-      throw error;
+      
+    } catch (err) {
+      console.error(`Error fetching plan for group ${id}:`, err.message);
+      throw err;
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
     }
   }
 
-async function processBatch(groups, batchSize = 3, delayMs = 500) {
+  async function processBatch(groups, batchSize = 1, delayMs = 1000) {
     const plans = {};
     
-    for (let i = 0; i < groups.length; i += batchSize) {
+    for (let i = 110; i < groups.length-89; i += batchSize) {
         const batch = groups.slice(i, i + batchSize);
         console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(groups.length/batchSize)} (${batch.join(', ')})`);
         
@@ -262,7 +275,7 @@ async function fetchAndCachePlans(groups) {
 }
 
 function generateICalendar(){
-    
+
 }
 
 app.get('/api/groups', async (req, res) => {
