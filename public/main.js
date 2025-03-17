@@ -1,3 +1,14 @@
+let selectedGroup = null;
+
+function handleGroupSelection(){
+    const dropdown = document.getElementById('group-select');
+    dropdown.addEventListener('change', (event) => {
+        selectedGroup = event.target.value;
+        document.querySelector('.QR-Code').style.display = 'none';
+    })
+}
+
+
 async function fetchAndPopulateGroups(){
     try{
         const dropdown = document.getElementById('group-select');
@@ -30,33 +41,25 @@ async function fetchAndPopulateGroups(){
 
 async function fetchAndPopulatePlans(){
     try {
-        const response = await fetch('api/plans');
+        await fetch('api/plans');
     } catch(err){
         console.log(err.message);
     }
 }
 
-let selectedGroup = null;
 
-function handleGroupSelection(){
-    const dropdown = document.getElementById('group-select');
-    dropdown.addEventListener('change', (event) => {
-        selectedGroup = event.target.value;
-        document.querySelector('.QR-Code').style.display = 'none';
-    })
-}
-
-function setupDownloadButton() {
+function downloadCalendar() {
     const downloadButton = document.querySelector('button.step1');
     
     downloadButton.addEventListener('click', () => {
         if(selectedGroup){
-            window.location.href = '/api/download-calendar';
+            window.location.href = `/api/download-calendar/${selectedGroup}`;
         } else{
             alert('Najpierw wybierz grupę');
         }
     });
 }
+
 
 function displayQR(){
     const generatedButton = document.querySelector('button.step2');
@@ -77,6 +80,6 @@ function displayQR(){
 document.addEventListener('DOMContentLoaded', () => {
     fetchAndPopulateGroups();
     handleGroupSelection();
-    setupDownloadButton();
+    downloadCalendar();
     displayQR();
 });

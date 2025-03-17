@@ -23,6 +23,60 @@ const axiosInstance = axios.create({
 app.use(cors());
 app.use(express.static('public'));
 
+//  CACHE & FETCH FUNCTIONS
+async function initializeCache() {
+  try {
+      try {
+          await fs.mkdir(CACHE_DIR, { recursive: true });
+      } catch(err) {
+          if (err.code !== 'EEXIST') throw err;
+      }
+
+      let needsUpdateGroup = true;
+      let needsUpdatePlan = true;
+
+      try {
+          const cacheDataGroup = await fs.readFile(GROUP_CACHE_FILE, 'utf8');
+          const cacheDataPlan = await fs.readFile(PLAN_CACHE_FILE, 'utf8');
+          const dataGroup = JSON.parse(cacheDataGroup);
+          const dataPlan = JSON.parse(cacheDataPlan);
+          const cacheTimeGroup = new Date(dataGroup.timestamp);
+          const cacheTimePlan = new Date(dataPlan.timestamp);
+          const now = new Date();
+
+          if ((now - cacheTimeGroup) < 24 * 60 * 60 * 1000) {
+              needsUpdateGroup = false;
+              console.log('Cache is still valid, skipping update');
+          } 
+          if ((now - cacheTimePlan) < 24 * 60 * 60 * 1000) {
+              needsUpdatePlan = false;
+              console.log('Cache is still valid, skipping update');
+          } else {
+              console.log('Cache is older than 24 hours, will update');
+          }
+      } catch (readError) {
+          console.log('No cache found, will create new cache');
+      }
+
+      if (needsUpdateGroup) {
+          const groups = await fetchAndCacheGroups();
+          
+          if (needsUpdatePlan) {
+              await fetchAndCachePlans(groups);
+              await generateICalendar();
+          }
+      } else if (needsUpdatePlan) {
+          const groupCacheData = await fs.readFile(GROUP_CACHE_FILE, 'utf-8');
+          const { groups } = JSON.parse(groupCacheData);
+          await fetchAndCachePlans(groups);
+          await generateICalendar();
+      }
+
+  } catch (error) {
+      console.error('Error initializing cache:', error.message);
+  }
+}
+
 function extractGroupNames(html) {
   const $ = cheerio.load(html);
   const groupNames = [];
@@ -64,7 +118,6 @@ async function fetchAndCacheGroups(){
         await fs.writeFile(GROUP_CACHE_FILE, JSON.stringify(cacheData, null, 2));
         console.log(`Successfully cached ${groupNames.length} groups`);
         
-        await fetchAndCachePlans(groupNames);
         return groupNames
     } catch(error){
         console.error('Error fetching groups:', error.message);
@@ -205,9 +258,9 @@ async function extractGroupPlan(id) {
         await browser.close();
       }
     }
-  }
+}
 
-  async function processBatch(groups, batchSize = 1, delayMs = 1000) {
+async function processBatch(groups, batchSize = 1, delayMs = 1000) {
     const plans = {};
     
     for (let i = 110; i < groups.length-89; i += batchSize) {
@@ -274,10 +327,92 @@ async function fetchAndCachePlans(groups) {
     }
 }
 
-function generateICalendar(){
+// ICS FILES GENERATION
+function generateIcsFiles(plansData, outputDir = './calendars'){
+    if(!fs.existsSync(outputDir)){
+      fs.mkdirSync(outputDir, {recursive : true});
+    }
 
+    Object.keys(plansData).forEach(groupId => {
+        const groupPlan = plansData[groupId];
+        const icsContent = generateIcsContent(groupPlan, groupId);
+
+        const filePath = path.join(outputDir, `${groupId}.ics`);
+        fs.writeFileSync(filePath, icsContent);
+    });
+}
+function generateIcsContent(groupPlan, groupId){
+  let icsContent = `BEGIN:VCALENDAR
+                    VERSION:2.0
+                    PRODID:-//WAT Schedule Generator//EN
+                    CALSCALE:GREGORIAN
+                    BEGIN:VTIMEZONE
+                    TZID:Europe/Warsaw
+                    LAST-MODIFIED:20240422T053451Z
+                    TZURL:https://www.tzurl.org/zoneinfo-outlook/Europe/Warsaw
+                    X-LIC-LOCATION:Europe/Warsaw
+                    BEGIN:DAYLIGHT
+                    TZNAME:CEST
+                    TZOFFSETFROM:+0100
+                    TZOFFSETTO:+0200
+                    DTSTART:19700329T020000
+                    RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
+                    END:DAYLIGHT
+                    BEGIN:STANDARD
+                    TZNAME:CET
+                    TZOFFSETFROM:+0200
+                    TZOFFSETTO:+0100
+                    DTSTART:19701025T030000
+                    RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+                    END:STANDARD
+                    END:VTIMEZONE\n`;
+
+  //Processing each day
+  Object.keys(groupPlan.days).forEach(dateStr => {
+      const day = groupPlan.days[dateStr]
+
+      Object.keys(day.blocks).forEach(blockId => {
+          const block = day.blocks[blockId];
+
+          if (block.isEmpty){
+            return;
+          }
+
+          const startDateTime = formatDateTime(dateStr, block.startTime);
+          const endDateTime = formatDateTime(dateStr, block.endTime);
+
+          const uid = `${groupId}-${dateStr}-${blockId}-${Math.random().toString(36).substring(2, 15)}`;
+
+          const summary = `${block.subjectCode} (${block.typeShort}) - ${block.room}`
+
+          const description = `Nazwa: ${block.subject}\nTyp: ${block.type}\nWykładowca: ${block.teacher}\nSala: ${block.room}`;
+
+          icsContent += `BEGIN:VEVENT
+                         DTSTAMP:${formatTimeStamp(new Date())}
+                         UID:${uid}
+                         DTSTART;TZID=Europe/Warsaw:${startDateTime}
+                         DTEND;TZID=Europe/Warsaw:${endDateTime}
+                         SUMMARY:${summary}
+                         DESCRIPTION:${description}
+                         END:VEVENT\n`;
+      });
+  }); 
+
+  icsContent += 'END:VCALENDAR';
+  return isContent
 }
 
+function formatDateTime(dateStr, timeStr){
+    const cleanDateStr = dateStr.replace(/-/g, '');
+    const cleanTimeStr = timeStr.replace(/:/g, '');
+    return `${cleanDateStr}T${cleanTimeStr}00`;
+}
+
+function formatTimeStamp(date){
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/g, '');
+}
+
+// API ENDPOINTS
 app.get('/api/groups', async (req, res) => {
     try {
         try {
@@ -322,6 +457,7 @@ app.get('/api/plans', async (req, res) => {
             const cacheData = await fs.readFile(PLAN_CACHE_FILE, 'utf8');
             plansData = JSON.parse(cacheData);
             console.log(`Retrieved ${Object.keys(plansData.plans).length} plans from cache`);
+            await generateICalendar();
         } catch (cacheError) {
             console.log('Cache miss for plans, fetching fresh data');
             try {
@@ -332,30 +468,34 @@ app.get('/api/plans', async (req, res) => {
                     timestamp: new Date().toISOString(),
                     plans: plans
                 };
+                await generateICalendar();
             } catch (groupsError) {
                 console.log('No groups cache found, fetching groups first');
                 const groups = await fetchAndCacheGroups();
-                const cacheData = await fs.readFile(PLAN_CACHE_FILE, 'utf8');
-                plansData = JSON.parse(cacheData);
+                const plans = await fetchAndCachePlans(groups);
+                plansData = {
+                  timestamp: new Date().toISOString(),
+                  plans: plans
+                };
+                await generateICalendar();
             }
         }
-
-        res.json(plansData);
     } catch(err) {
         console.error('Error in /api/plans endpoint:', err.message);
         res.status(500).json({ error: 'Failed to retrieve plans' });
     }
 });
 
-app.get('/api/download-calendar', (req, res) => {
+app.get('/api/download-calendar/:group', (req, res) => {
   try {
-    const filePath = path.join(__dirname, 'zajecie.ics');
+    const group = req.params.group;
+    const filePath = path.join(__dirname, 'calendars', `${group}.ics`);
     
     console.log('Attempting to serve file from:', filePath);
     
     fs.access(filePath, fs.constants.F_OK)
       .then(() => {
-        res.download(filePath, 'zajecie.ics');
+        res.download(filePath, `${group}.ics`);
       })
       .catch((err) => {
         console.error(`File not found: ${filePath}`, err);
@@ -367,39 +507,6 @@ app.get('/api/download-calendar', (req, res) => {
   }
 });
 
-async function initializeCache() {
-    try {
-        try {
-            await fs.mkdir(CACHE_DIR, { recursive: true });
-        } catch(err) {
-            if (err.code !== 'EEXIST') throw err;
-        }
-
-        let needsUpdate = true;
-
-        try {
-            const cacheData = await fs.readFile(GROUP_CACHE_FILE, 'utf8');
-            const data = JSON.parse(cacheData);
-            const cacheTime = new Date(data.timestamp);
-            const now = new Date();
-
-            if ((now - cacheTime) < 24 * 60 * 60 * 1000) {
-                needsUpdate = false;
-                console.log('Cache is still valid, skipping update');
-            } else {
-                console.log('Cache is older than 24 hours, will update');
-            }
-        } catch (readError) {
-            console.log('No cache found, will create new cache');
-        }
-
-        if (needsUpdate) {
-            await fetchAndCacheGroups();
-        }
-    } catch (error) {
-        console.error('Error initializing cache:', error.message);
-    }
-}
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
