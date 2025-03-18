@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "postinstall": "node node_modules/puppeteer/install.js"
+    "postinstall": "puppeteer browsers install chrome"
   },
   "keywords": [],
   "author": "",
