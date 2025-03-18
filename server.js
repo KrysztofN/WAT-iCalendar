@@ -131,7 +131,8 @@ async function extractGroupPlan(id) {
       console.log(`Fetching plan for group ${id} using Puppeteer...`);
       browser = await puppeteer.launch({
         headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        timeout: 60000
       });
       
       const page = await browser.newPage();
@@ -259,7 +260,7 @@ async function extractGroupPlan(id) {
 async function processBatch(groups, batchSize = 5, delayMs = 500) {
     const plans = {};
     
-    for (let i = 110; i < groups.length-89; i += batchSize) {
+    for (let i = 0; i < groups.length; i += batchSize) {
         const batch = groups.slice(i, i + batchSize);
         console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(groups.length/batchSize)} (${batch.join(', ')})`);
         
