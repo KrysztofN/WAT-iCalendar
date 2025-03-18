@@ -5,6 +5,7 @@ const fs = require('fs').promises;
 const express = require('express');
 const cors = require('cors');
 const puppeteer = require('puppeteer');
+const cron = require('node-cron');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +24,30 @@ const axiosInstance = axios.create({
 app.use(cors());
 app.use(express.static('public'));
 
+// CRON JOBS
+cron.schedule('0 3 * * *', ()=> {
+    console.log('Running daily cache update...');
+    initializeCache().then(()=> console.log('Daily update completed')).catch(err => console.error('Error in daily update'));
+});
+
+// CLEANUP
+async function cleanupOldICSFiles(){
+  try{
+    const calendarDir = path.join(__dirname, 'calendars');
+    fs.readdir(calendarDir, (err, files) => {
+      if (err) throw err;
+
+      for(const file of files){
+        fs.unlink(path.join(calendarDir, file), (err) => {
+          if (err) throw err;
+        })
+      }
+    })
+  } catch (err){
+    console.error('Error cleaning up old files: ', err);
+  }
+}
+
 //  CACHE & FETCH FUNCTIONS
 async function initializeCache() {
   try {
@@ -32,49 +57,19 @@ async function initializeCache() {
           if (err.code !== 'EEXIST') throw err;
       }
 
-      let needsUpdateGroup = true;
-      let needsUpdatePlan = true;
-      let dataGroup = null;
+      const groups = await fetchAndCacheGroups();
 
-      try {
-          const cacheDataGroup = await fs.readFile(GROUP_CACHE_FILE, 'utf8');
-          const cacheDataPlan = await fs.readFile(PLAN_CACHE_FILE, 'utf8');
-          dataGroup = JSON.parse(cacheDataGroup);
-          const dataPlan = JSON.parse(cacheDataPlan);
-          const cacheTimeGroup = new Date(dataGroup.timestamp);
-          const cacheTimePlan = new Date(dataPlan.timestamp);
-          const now = new Date();
+      const plans = await fetchAndCachePlans(groups);
+      console.log("Plans data fetched");
 
-          if ((now - cacheTimeGroup) < 24 * 60 * 60 * 1000) {
-              needsUpdateGroup = false;
-              console.log('Cache is still valid, skipping update');
-          } 
-          if ((now - cacheTimePlan) < 24 * 60 * 60 * 1000) {
-              needsUpdatePlan = false;
-              console.log('Cache is still valid, skipping update');
-          } else {
-              console.log('Cache is older than 24 hours, will update');
-          }
-      } catch (readError) {
-          console.log('No cache found, will create new cache');
-      }
+      await cleanupOldICSFiles();
+      await generateIcsFiles(plans);
+      console.log("ICS files regenerated");
 
-      if (needsUpdateGroup) {
-          const groups = await fetchAndCacheGroups();
-          
-          if (needsUpdatePlan) {
-              const plans = await fetchAndCachePlans(groups);
-              await generateIcsFiles(plans);
-
-          }
-      } else if (needsUpdatePlan) {
-          const groups = dataGroup.groups;
-          const plans = await fetchAndCachePlans(groups);
-          await generateIcsFiles(plans);
-      }
+      console.log("Cache refresh completed successfully");
 
   } catch (error) {
-      console.error('Error initializing cache:', error.message);
+      console.error('Error refreshing cache:', error.message);
   }
 }
 
@@ -261,7 +256,7 @@ async function extractGroupPlan(id) {
     }
 }
 
-async function processBatch(groups, batchSize = 1, delayMs = 1000) {
+async function processBatch(groups, batchSize = 5, delayMs = 500) {
     const plans = {};
     
     for (let i = 110; i < groups.length-89; i += batchSize) {
@@ -297,31 +292,19 @@ async function processBatch(groups, batchSize = 1, delayMs = 1000) {
 
 async function fetchAndCachePlans(groups) {
     try {
-        let existingPlans = {};
-        try {
-            const cacheData = await fs.readFile(PLAN_CACHE_FILE, 'utf8');
-            const { plans } = JSON.parse(cacheData);
-            existingPlans = plans || {};
-            console.log(`Found ${Object.keys(existingPlans).length} existing plans in cache`);
-        } catch (err) {
-            console.log('No existing plans cache found, will create new cache');
-        }
-        
         const freshPlans = await processBatch(groups);
-        
-        const allPlans = { ...existingPlans, ...freshPlans };
         
         await fs.writeFile(
             PLAN_CACHE_FILE, 
             JSON.stringify(
-                { timestamp: new Date().toISOString(), plans: allPlans },
+                { timestamp: new Date().toISOString(), plans: freshPlans },
                 null, 
                 2
             )
         );
         
-        console.log(`Successfully cached ${Object.keys(allPlans).length} plans`);
-        return allPlans;
+        console.log(`Successfully cached ${Object.keys(freshPlans).length} plans`);
+        return freshPlans;
     } catch (err) {
         console.log('Error in fetchAndCachePlans:', err.message);
         throw err;

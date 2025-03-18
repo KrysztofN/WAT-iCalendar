@@ -65,14 +65,24 @@ function displayQR(){
     const generatedButton = document.querySelector('button.step2');
     
     generatedButton.addEventListener('click', () => {
-        document.querySelector('.QR-Code').style.display = 'block';
-        
-        document.getElementById("qrcode").innerHTML = '';
-        new QRCode(document.getElementById("qrcode"), {
-            text: "http://jindo.dev.naver.com/collie",
-            width: 128,
-            height: 128,
-        });
+        if(!selectedGroup){
+            alert('Najpierw wybierz grupę');
+        } else {
+
+            const baseUrl = window.location.origin;
+            const calendarUrl = `${baseUrl}/api/download-calendar/${selectedGroup}`;
+    
+            document.querySelector('.QR-Code').style.display = 'block';
+            
+            document.getElementById("qrcode").innerHTML = '';
+            new QRCode(document.getElementById("qrcode"), {
+                text: calendarUrl,
+                width: 128,
+                height: 128,
+            });
+
+        }
+
     });
 
 }
