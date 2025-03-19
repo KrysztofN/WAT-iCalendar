@@ -24,25 +24,15 @@ On **Android** devices manual import may be needed.
 
 <br/>
 <br/>
-<br/>
-<br/>
-<br/>
-<br/>
 
 ### RUNNING LOCALLY
 1. Make sure You have [Node.js](https://nodejs.org/en/download) and it is in Your path
-<br/>
-
 2. CLone the repository:
 ```console
 git clone https://github.com/KrysztofN/WAT-iCalendar.git
 cd WAT-iCalendar
 ```
-<br/>
-
 3. Install Docker and add it to your PATH.
-<br/>
-
 4. Build and run the Docker container:
 - If you have CMake installed
 ```console
@@ -53,8 +43,6 @@ make dockerize
 docker build -t icalendar-wat .
 docker run -p 3000:3000 -m 512m icalendar-wat
 ```
-<br/>
-
 5. Access the app at http://localhost:3000 
 
 
