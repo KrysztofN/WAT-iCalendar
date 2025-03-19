@@ -41,14 +41,6 @@ async function fetchAndPopulateGroups(){
     }
 }
 
-async function fetchAndPopulatePlans(){
-    try {
-        await fetch('api/plans');
-    } catch(err){
-        console.log(err.message);
-    }
-}
-
 
 function downloadCalendar() {
     const downloadButton = document.querySelector('button.step1');
@@ -93,7 +85,6 @@ function displayQR(){
 
 document.addEventListener('DOMContentLoaded', async () => {
     fetchAndPopulateGroups();
-    fetchAndPopulatePlans();
     handleGroupSelection();
     downloadCalendar();
     displayQR();

@@ -25,7 +25,7 @@ app.use(cors());
 app.use(express.static('public'));
 
 // CRON JOBS
-cron.schedule('0 3 * * *', ()=> {
+cron.schedule('0 0 */3 * *', ()=> {
     console.log('Running daily cache update...');
     initializeCache().then(()=> console.log('Daily update completed')).catch(err => console.error('Error in daily update'));
 });
