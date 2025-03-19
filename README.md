@@ -25,9 +25,11 @@ On **Android** devices manual import may be needed.
 <br/>
 <br/>
 
+---
+
 ### RUNNING LOCALLY
 1. Make sure You have [Node.js](https://nodejs.org/en/download) and it is in Your path
-2. CLone the repository:
+2. Clone the repository:
 ```console
 git clone https://github.com/KrysztofN/WAT-iCalendar.git
 cd WAT-iCalendar
