@@ -28,6 +28,7 @@ On **Android** devices manual import may be needed.
 <br/>
 <br/>
 <br/>
+
 ### RUNNING LOCALLY
 1. Make sure You have [Node.js](https://nodejs.org/en/download) and it is in Your path
 2. CLone the repository:
