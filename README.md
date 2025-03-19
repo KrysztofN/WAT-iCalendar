@@ -48,6 +48,9 @@ cd WAT-iCalendar
 ```console
 make dockerize
 ``` 
+```
+as
+```
 - If you don't have CMake
 ```console
 docker build -t icalendar-wat .
