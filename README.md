@@ -49,7 +49,7 @@ cd WAT-iCalendar
 make dockerize
 ``` 
 - If you don't have CMake
-```docker 
+```dockerfile
 docker build -t icalendar-wat .
 docker run -p 3000:3000 -m 512m icalendar-wat
 ```
