@@ -136,7 +136,7 @@ async function extractGroupPlan(id) {
       browser = await puppeteer.launch({
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
         headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--single-process'],
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
         timeout: 0
       });
       
@@ -262,7 +262,7 @@ async function extractGroupPlan(id) {
     }
 }
 
-async function processBatch(groups, batchSize = 1, delayMs = 500) {
+async function processBatch(groups, batchSize = 1, delayMs = 1000) {
     const plans = {};
     
     for (let i = 0; i < groups.length; i += batchSize) {
