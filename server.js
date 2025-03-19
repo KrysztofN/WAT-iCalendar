@@ -34,15 +34,19 @@ cron.schedule('0 3 * * *', ()=> {
 async function cleanupOldICSFiles(){
   try{
     const calendarDir = path.join(__dirname, 'calendars');
-    fs.readdir(calendarDir, (err, files) => {
-      if (err) throw err;
-
-      for(const file of files){
-        fs.unlink(path.join(calendarDir, file), (err) => {
+    try {
+        fs.readdir(calendarDir, (err, files) => {
           if (err) throw err;
+    
+          for(const file of files){
+            fs.unlink(path.join(calendarDir, file), (err) => {
+              if (err) throw err;
+            })
+          }
         })
-      }
-    })
+    } catch {
+      console.log('Everything clean...nothing to remove')
+    }
   } catch (err){
     console.error('Error cleaning up old files: ', err);
   }
@@ -257,7 +261,7 @@ async function extractGroupPlan(id) {
     }
 }
 
-async function processBatch(groups, batchSize = 5, delayMs = 500) {
+async function processBatch(groups, batchSize = 10, delayMs = 500) {
     const plans = {};
     
     for (let i = 0; i < groups.length; i += batchSize) {
