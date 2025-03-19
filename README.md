@@ -11,6 +11,7 @@ This tool was built to help WAT students of WCY department import their timetabl
 ---
 ### PC
 You need to manually import the downloaded file into any calendar of your liking. 
+<br/><br/>
 Example for **Outlook**:
 - Click on calendar icon
 - Select 'Add calendar' then 'Upload from file'
