@@ -45,11 +45,11 @@ cd WAT-iCalendar
 
 4. Build and run the Docker container:
 - If you have CMake installed
-```cmake
+```console
 make dockerize
 ``` 
 - If you don't have CMake
-```dockerfile
+```console
 docker build -t icalendar-wat .
 docker run -p 3000:3000 -m 512m icalendar-wat
 ```
