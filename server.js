@@ -25,10 +25,10 @@ app.use(cors());
 app.use(express.static('public'));
 
 // CRON JOBS
-cron.schedule('0 0 */3 * *', ()=> {
-    console.log('Running daily cache update...');
-    initializeCache().then(()=> console.log('Daily update completed')).catch(err => console.error('Error in daily update'));
-});
+// cron.schedule('0 0 */3 * *', ()=> {
+//     console.log('Running daily cache update...');
+//     initializeCache().then(()=> console.log('Daily update completed')).catch(err => console.error('Error in daily update'));
+// });
 
 // CLEANUP
 async function cleanupOldICSFiles(){
@@ -136,7 +136,7 @@ async function extractGroupPlan(id) {
       browser = await puppeteer.launch({
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
         headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--single-process'],
         timeout: 0
       });
       
@@ -262,7 +262,7 @@ async function extractGroupPlan(id) {
     }
 }
 
-async function processBatch(groups, batchSize = 1, delayMs = 100) {
+async function processBatch(groups, batchSize = 1, delayMs = 500) {
     const plans = {};
     
     for (let i = 0; i < groups.length; i += batchSize) {
@@ -505,6 +505,14 @@ app.get('/api/download-calendar/:group', (req, res) => {
     console.error('Error in download route:', error);
     res.status(500).json({ error: 'Failed to download calendar' });
   }
+});
+
+app.get('api/update-data', async (req, res) => {
+    try {
+      await initializeCache();
+    } catch (err){
+      console.log(err.message)
+    }
 });
 
 
