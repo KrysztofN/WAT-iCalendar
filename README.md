@@ -34,7 +34,7 @@ On **Android** devices manual import may be needed.
 <br/>
 
 2. CLone the repository:
-```cmd
+```console
 git clone https://github.com/KrysztofN/WAT-iCalendar.git
 cd WAT-iCalendar
 ```
@@ -48,9 +48,6 @@ cd WAT-iCalendar
 ```console
 make dockerize
 ``` 
-```
-as
-```
 - If you don't have CMake
 ```console
 docker build -t icalendar-wat .
