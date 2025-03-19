@@ -132,7 +132,7 @@ async function extractGroupPlan(id) {
       browser = await puppeteer.launch({
         headless: 'new',
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        timeout: 60000
+        timeout: 0
       });
       
       const page = await browser.newPage();
@@ -324,8 +324,10 @@ function generateIcsFiles(plansData, outputDir = './calendars'){
       Object.keys(plansData).forEach(groupId => {
           const groupPlan = plansData[groupId];
           const icsContent = generateIcsContent(groupPlan, groupId);
+
+          const sanitizedGroupId = groupId.replace(/[\\/:*?"<>|]/g, '_');
   
-          const filePath = path.join(outputDir, `${groupId}.ics`);
+          const filePath = path.join(outputDir, `${sanitizedGroupId}.ics`);
           fs.writeFile(filePath, icsContent);
       });
       

@@ -1,12 +1,16 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(90deg, rgba(190,89,133,1) 0%, rgba(128,0,56,1) 100%);
+    background: linear-gradient(90deg, rgb(221, 128, 169) 0%, rgba(128,0,56,1) 100%);
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     margin: 0;
     padding: 0;
+}
+
+.header{
+    font-size: 18px;
 }
 
 .form-block{
@@ -23,7 +27,6 @@ body {
 .form-block h1{
     color: var(--primary-color);
     margin-bottom: 30px;
-    font-size: 28px;
 }
 
 label {
@@ -57,6 +60,7 @@ select {
     transition: transform 0.3s;
     cursor: pointer;
     color: black;
+    margin-top: 20px;
 }
 
 .step:hover {

@@ -1,11 +1,10 @@
 let selectedGroup = null;
 
 function handleGroupSelection(){
-    const dropdown = document.getElementById('group-select');
-    dropdown.addEventListener('change', (event) => {
-        selectedGroup = event.target.value;
+    $('#group-select').on('select2:select', function (e) {
+        selectedGroup = e.params.data.id; 
         document.querySelector('.QR-Code').style.display = 'none';
-    })
+    });
 }
 
 
@@ -34,6 +33,9 @@ async function fetchAndPopulateGroups(){
             option.textContent = group;
             dropdown.appendChild(option);
         });
+        $('#group-select').select2({
+            dropdownCssClass: 'safari-style',
+        });
     } catch (error) {
         console.log(error.message);
     }
@@ -60,7 +62,6 @@ function downloadCalendar() {
     });
 }
 
-
 function displayQR(){
     const generatedButton = document.querySelector('button.step2');
     
@@ -70,7 +71,10 @@ function displayQR(){
         } else {
 
             const baseUrl = window.location.origin;
-            const calendarUrl = `${baseUrl}/api/download-calendar/${selectedGroup}`;
+            
+            const sanitizedGroupId = selectedGroup.replace(/[\\/:*?"<>|]/g, '_');
+
+            const calendarUrl = `${baseUrl}/api/download-calendar/${sanitizedGroupId}`;
     
             document.querySelector('.QR-Code').style.display = 'block';
             
