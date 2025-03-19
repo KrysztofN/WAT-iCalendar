@@ -21,10 +21,6 @@ Example for **Outlook**:
 ### PHONE
 Immediately after download,  **IOS** devices will open up the calendar where you can check the contents of the calendar to be added.
 On **Android** devices manual import may be needed. 
-
-<br/>
-<br/>
-
 ---
 
 ### RUNNING LOCALLY
