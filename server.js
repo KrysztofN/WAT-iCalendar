@@ -317,7 +317,7 @@ app.get('/api/groups', async (req, res) => {
             console.log(`Retrieved ${groupsData.groups.length} groups from cache`);
         } catch (cacheError) {
             console.log('Cache miss for groups, fetching fresh data');
-            const groups = await fetchAndCacheGroups();
+            const groups = await fetchGroups();
             groupsData = {
                 timestamp: new Date().toISOString(),
                 groups: groups
