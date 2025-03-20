@@ -24,8 +24,8 @@ On **Android** devices manual import may be needed.
 
 ---
 ### SHOWCASE
-<p float="left" padding="50">
-    <img src = "https://github.com/KrysztofN/WAT-iCalendar/blob/main/public/assets/calendar_add.png" width="200" height="400">
+<p float="left">
+    <img src = "https://github.com/KrysztofN/WAT-iCalendar/blob/main/public/assets/calendar_add.png" width="200" height="400" style="margin-right: 50px">
     <img src = "https://github.com/KrysztofN/WAT-iCalendar/blob/main/public/assets/calendar_view.png" width="200" height="400">
 </p>
 
