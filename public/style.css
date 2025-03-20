@@ -13,15 +13,28 @@ body {
     font-size: 18px;
 }
 
-.form-block{
-    margin: 20px;
-    background-color: white;
-    padding: 40px;
-    border-radius: 12px;
-    box-shadow: var(--shadow);
+.full-container{
     width: 100%;
     max-width: 400px;
+    background-color: white;
+    border-radius: 20px;
     text-align: center;
+    -webkit-box-shadow: -7px 6px 10px -1px rgba(66, 68, 90, 1);
+    -moz-box-shadow: -7px 6px 10px -1px rgba(66, 68, 90, 1);
+    box-shadow: -7px 6px 10px -1px rgba(66, 68, 90, 1);
+}
+
+.form-block{
+    margin: 0;
+    padding: 40px 40px 20px 40px;
+}
+
+.dynamic-bar{
+    display: none;
+    background-color: #FFB8E0;
+    border-radius: 20px;
+    height: 25px;
+    width: 100%;
 }
 
 .form-block h1{

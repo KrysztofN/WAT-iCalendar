@@ -357,6 +357,24 @@ app.get('/api/download-calendar/:groupId', async (req, res) => {
   }
 });
 
+app.get('/api/fetch-calendar/:groupId', async (req, res) => {
+  try {
+    const groupId = req.params.groupId;
+    const sanitizedGroupId = groupId.replace(/[\\/:*?"<>|]/g, '_');
+    const filePath = path.join('./calendars', `${sanitizedGroupId}.ics`);
+
+    const icsFile = await fs.readFile(filePath, 'utf8');
+    
+    res.setHeader('Content-Type', 'text/calendar');
+    res.setHeader('Content-Disposition', `attachment; filename="${sanitizedGroupId}.ics"`);
+    
+    res.send(icsFile);
+  } catch (error) {
+    console.error('Error in download calendar route:', error);
+    res.status(500).json({ error: 'Failed to generate calendar' });
+  }
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
