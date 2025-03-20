@@ -1,4 +1,3 @@
 node_modules
 .cache
-ssh-connect.txt
 server_copy.js
