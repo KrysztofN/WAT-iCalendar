@@ -24,7 +24,7 @@ On **Android** devices manual import may be needed.
 
 ---
 ### SHOWCASE
-![Iphone calendar view](https://github.com/KrysztofN/WAT-iCalendar/blob/main/public/assets/calendar_view.png|width=100)
+<img src = "https://github.com/KrysztofN/WAT-iCalendar/blob/main/public/assets/calendar_view.png" width="200" height="400">
 
 ---
 
