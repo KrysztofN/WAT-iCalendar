@@ -2,3 +2,5 @@ node_modules
 .cache
 data
 calendars
+ssh-connect.txt
+server_copy.js

@@ -54,6 +54,7 @@ function downloadCalendar() {
     });
 }
 
+
 function displayQR(){
     const generatedButton = document.querySelector('button.step2');
     
@@ -61,13 +62,22 @@ function displayQR(){
         if(!selectedGroup){
             alert('Najpierw wybierz grupę');
         } else {
-
             const baseUrl = window.location.origin;
             
-            const sanitizedGroupId = selectedGroup.replace(/[\\/:*?"<>|]/g, '_');
-
-            const calendarUrl = `${baseUrl}/api/download-calendar/${sanitizedGroupId}`;
-    
+            console.log("Selected group for QR:", selectedGroup);
+            
+            const calendarUrl = `${baseUrl}/api/download-calendar/${selectedGroup}`;
+            
+            console.log("Calendar URL for QR:", calendarUrl);
+            
+            fetch(calendarUrl)
+                .then(response => {
+                    console.log("Endpoint called successfully:", response.status);
+                })
+                .catch(error => {
+                    console.error("Error calling endpoint:", error);
+                });
+            
             document.querySelector('.QR-Code').style.display = 'block';
             
             document.getElementById("qrcode").innerHTML = '';
@@ -76,11 +86,8 @@ function displayQR(){
                 width: 128,
                 height: 128,
             });
-
         }
-
     });
-
 }
 
 
