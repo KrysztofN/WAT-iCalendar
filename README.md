@@ -23,6 +23,10 @@ Immediately after download,  **IOS** devices will open up the calendar where you
 On **Android** devices manual import may be needed. 
 
 ---
+### SHOWCASE
+![Iphone calendar view](https://github.com/KrysztofN/WAT-iCalendar/blob/main/public/assets/calendar_view.png)
+
+---
 
 ### RUNNING LOCALLY
 1. Make sure you have [Node.js](https://nodejs.org/en/download) and it is in your path.
