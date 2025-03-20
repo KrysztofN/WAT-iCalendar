@@ -11,7 +11,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const CACHE_DIR = path.join(__dirname, 'data');
 const GROUP_CACHE_FILE = path.join(CACHE_DIR, 'groups-cache.json');
-const PLAN_CACHE_FILE = path.join(CACHE_DIR, 'plans-cache.json');
 
 const axiosInstance = axios.create({
   timeout: 30000, 
@@ -24,6 +23,58 @@ const axiosInstance = axios.create({
 app.use(cors());
 app.use(express.static('public'));
 
+// CRON JOBS
+cron.schedule('0 0 */3 * *', ()=> {
+    console.log('Running daily cache update...');
+    initializeCache().then(()=> console.log('Daily update completed')).catch(err => console.error('Error in daily update'));
+});
+
+// CLEANUP
+async function cleanupOldICSFiles(){
+  try{
+    const calendarDir = path.join(__dirname, 'calendars');
+    try {
+        fs.readdir(calendarDir, (err, files) => {
+          if (err) throw err;
+    
+          for(const file of files){
+            fs.unlink(path.join(calendarDir, file), (err) => {
+              if (err) throw err;
+            })
+          }
+        })
+    } catch {
+      console.log('Everything clean...nothing to remove')
+    }
+  } catch (err){
+    console.error('Error cleaning up old files: ', err);
+  }
+}
+
+//  CACHE & FETCH FUNCTIONS
+async function initializeCache() {
+  try {
+      try {
+          await fs.mkdir(CACHE_DIR, { recursive: true });
+      } catch(err) {
+          if (err.code !== 'EEXIST') throw err;
+      }
+
+      const groups = await fetchAndCacheGroups();
+
+      const plans = await fetchAndCachePlans(groups);
+      console.log("Plans data fetched");
+
+      await cleanupOldICSFiles();
+      await generateIcsFiles(plans);
+      console.log("ICS files regenerated");
+
+      console.log("Cache refresh completed successfully");
+
+  } catch (error) {
+      console.error('Error refreshing cache:', error.message);
+  }
+}
 
 function extractGroupNames(html) {
   const $ = cheerio.load(html);
@@ -44,7 +95,7 @@ function extractGroupNames(html) {
   return groupNames;
 }
 
-async function fetchGroups(){
+async function fetchAndCacheGroups(){
     try{
         const targetUrl = 'https://planzajec.wcy.wat.edu.pl/rozklad'; 
         console.log(`Fetching HTML from ${targetUrl}...`);
@@ -82,7 +133,7 @@ async function extractGroupPlan(id) {
     try {
       console.log(`Fetching plan for group ${id} using Puppeteer...`);
       browser = await puppeteer.launch({
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        // executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
         headless: 'new',
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
         timeout: 0
@@ -208,25 +259,85 @@ async function extractGroupPlan(id) {
         await browser.close();
       }
     }
-}   
+}
 
-async function generateAndStoreIcsFile(groupPlan, groupId, outputDir = './calendars') {
-  try {
-    await fs.mkdir(outputDir, { recursive: true });
+async function processBatch(groups, batchSize = 10, delayMs = 500) {
+    const plans = {};
     
-    const icsContent = generateIcsContent(groupPlan, groupId);
+    for (let i = 0; i < groups.length; i += batchSize) {
+        const batch = groups.slice(i, i + batchSize);
+        console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(groups.length/batchSize)} (${batch.join(', ')})`);
+        
+        const batchPromises = batch.map(async (group) => {
+            try {
+                const plan = await extractGroupPlan(group);
+                return { group, plan };
+            } catch (err) {
+                console.log(`Error processing group ${group}:`, err.message);
+                return { group, error: err.message };
+            }
+        });
+        
+        const results = await Promise.all(batchPromises);
+        
+        results.forEach(result => {
+            if (result.plan) {
+                plans[result.group] = result.plan;
+            }
+        });
+        
+        if (i + batchSize < groups.length) {
+            console.log(`Waiting ${delayMs}ms before next batch...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+    }
     
-    const sanitizedGroupId = groupId.replace(/[\\/:*?"<>|]/g, '_');
-    const filePath = path.join(outputDir, `${sanitizedGroupId}.ics`);
-    
-    await fs.writeFile(filePath, icsContent);
-    
-    console.log(`Successfully wrote calendar file to ${filePath}`);
-    return icsContent;
-  } catch(err) {
-    console.error(`Error generating/storing ICS file: ${err.message}`);
-    throw err;
-  }
+    return plans;
+}
+
+async function fetchAndCachePlans(groups) {
+    try {
+        const freshPlans = await processBatch(groups);
+        
+        // await fs.writeFile(
+        //     PLAN_CACHE_FILE, 
+        //     JSON.stringify(
+        //         { timestamp: new Date().toISOString(), plans: freshPlans },
+        //         null, 
+        //         2
+        //     )
+        // );
+        
+        console.log(`Successfully cached ${Object.keys(freshPlans).length} plans`);
+        return freshPlans;
+    } catch (err) {
+        console.log('Error in fetchAndCachePlans:', err.message);
+        throw err;
+    }
+}
+
+// ICS FILES GENERATION
+function generateIcsFiles(plansData, outputDir = './calendars'){
+    try {
+      try {
+        fs.mkdir(outputDir, {recursive : true});
+      } catch (err) {
+        if (err.code !== 'EEXIST') throw err;
+      }
+  
+      Object.keys(plansData).forEach(groupId => {
+          const groupPlan = plansData[groupId];
+          const icsContent = generateIcsContent(groupPlan, groupId);
+
+          const sanitizedGroupId = groupId.replace(/[\\/:*?"<>|]/g, '_');
+  
+          const filePath = path.join(outputDir, `${sanitizedGroupId}.ics`);
+          fs.writeFile(filePath, icsContent);
+      });
+      
+    } catch(err){
+      console.log(err.message);
+    }
 }
 
 function generateIcsContent(groupPlan, groupId){
@@ -317,7 +428,7 @@ app.get('/api/groups', async (req, res) => {
             console.log(`Retrieved ${groupsData.groups.length} groups from cache`);
         } catch (cacheError) {
             console.log('Cache miss for groups, fetching fresh data');
-            const groups = await fetchGroups();
+            const groups = await fetchAndCacheGroups();
             groupsData = {
                 timestamp: new Date().toISOString(),
                 groups: groups
@@ -331,30 +442,47 @@ app.get('/api/groups', async (req, res) => {
     }
 });
 
-app.get('/api/update-group-list', async (req, res) => {
-  try {
-    await fetchGroups();
-    res.json(groupsData);
-  } catch(err) {
-    console.error('Error in updating groups', err.message);
-    res.status(500).json({ error: 'Failed to retrieve groups' });
-  }
-});
+app.get('/api/plans', async (req, res) => {
+    try {
+        try {
+            await fs.mkdir(CACHE_DIR, { recursive: true });
+        } catch(err) {
+            if (err.code !== 'EEXIST') throw err;
+        }
 
-app.get('/api/download-calendar/:groupId', async (req, res) => {
-  try {
-    const groupId = req.params.groupId;
-    const groupPlan = await extractGroupPlan(groupId);
-    const icsContent = await generateAndStoreIcsFile(groupPlan, groupId);
-    
-    res.setHeader('Content-Type', 'text/calendar');
-    res.setHeader('Content-Disposition', `attachment; filename="${groupId}.ics"`);
-    
-    res.send(icsContent);
-  } catch (error) {
-    console.error('Error in download calendar route:', error);
-    res.status(500).json({ error: 'Failed to generate calendar' });
-  }
+        let plansData;
+
+        try {
+            const cacheData = await fs.readFile(PLAN_CACHE_FILE, 'utf8');
+            plansData = JSON.parse(cacheData);
+            console.log(`Retrieved ${Object.keys(plansData.plans).length} plans from cache`);
+            // check if plans exist
+        } catch (cacheError) {
+            console.log('Cache miss for plans, fetching fresh data');
+            try {
+                const groupsData = await fs.readFile(GROUP_CACHE_FILE, 'utf8');
+                const { groups } = JSON.parse(groupsData);
+                const plans = await fetchAndCachePlans(groups);
+                plansData = {
+                    timestamp: new Date().toISOString(),
+                    plans: plans
+                };
+                await generateIcsFiles(plans);
+            } catch (groupsError) {
+                console.log('No groups cache found, fetching groups first');
+                const groups = await fetchAndCacheGroups();
+                const plans = await fetchAndCachePlans(groups);
+                plansData = {
+                  timestamp: new Date().toISOString(),
+                  plans: plans
+                };
+                await generateIcsFiles(plans);
+            }
+        }
+    } catch(err) {
+        console.error('Error in /api/plans endpoint:', err.message);
+        res.status(500).json({ error: 'Failed to retrieve plans' });
+    }
 });
 
 app.get('/api/fetch-calendar/:groupId', async (req, res) => {
@@ -372,6 +500,26 @@ app.get('/api/fetch-calendar/:groupId', async (req, res) => {
   } catch (error) {
     console.error('Error in download calendar route:', error);
     res.status(500).json({ error: 'Failed to generate calendar' });
+  }
+});
+
+app.get('/api/download-calendar/:group', (req, res) => {
+  try {
+    const group = req.params.group;
+    const filePath = path.join(__dirname, 'calendars', `${group}.ics`);
+    console.log('Attempting to serve file from:', filePath);
+    
+    fs.access(filePath, fs.constants.F_OK)
+      .then(() => {
+        res.download(filePath, `${group}.ics`);
+      })
+      .catch((err) => {
+        console.error(`File not found: ${filePath}`, err);
+        res.status(404).json({ error: 'Calendar file not found' });
+      });
+  } catch (error) {
+    console.error('Error in download route:', error);
+    res.status(500).json({ error: 'Failed to download calendar' });
   }
 });
 

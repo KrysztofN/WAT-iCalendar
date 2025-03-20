@@ -88,7 +88,10 @@ async function downloadCalendar() {
 
             if (finalUrl) {
                 await animateProgressWithPromise(30, 50);
-                await downloadWithProgress(finalUrl, bar, selectedGroup);
+                // await downloadWithProgress(finalUrl, bar, selectedGroup);
+                await animateProgressWithPromise(50, 100);
+                window.location.href = finalUrl;
+
             }
         } catch (error) {
             console.error(error);
@@ -97,53 +100,53 @@ async function downloadCalendar() {
     });
 }
 
-async function downloadWithProgress(url, bar, selectedGroup) {
-    const response = await fetch(url);
+// async function downloadWithProgress(url, bar, selectedGroup) {
+//     const response = await fetch(url);
     
-    if (!response.ok) {
-        throw new Error(`Download failed: ${response.statusText}`);
-    }
+//     if (!response.ok) {
+//         throw new Error(`Download failed: ${response.statusText}`);
+//     }
 
-    const contentLength = response.headers.get('Content-Length');
-    if (!contentLength) {
-        console.warn("Content-Length header missing; can't track progress.");
-        bar.style.width = '100%';
-        bar.style.display = 'none';
-        return;
-    }
+//     const contentLength = response.headers.get('Content-Length');
+//     if (!contentLength) {
+//         console.warn("Content-Length header missing; can't track progress.");
+//         bar.style.width = '100%';
+//         bar.style.display = 'none';
+//         return;
+//     }
 
-    const totalBytes = parseInt(contentLength, 10);
-    let receivedBytes = 0;
-    const reader = response.body.getReader();
-    const chunks = [];
+//     const totalBytes = parseInt(contentLength, 10);
+//     let receivedBytes = 0;
+//     const reader = response.body.getReader();
+//     const chunks = [];
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        receivedBytes += value.length;
+//     while (true) {
+//         const { done, value } = await reader.read();
+//         if (done) break;
+//         chunks.push(value);
+//         receivedBytes += value.length;
 
-        const percent = Math.round((receivedBytes / totalBytes) * 100);
-        bar.style.width = `${percent}%`;
-    }
+//         const percent = Math.round((receivedBytes / totalBytes) * 100);
+//         bar.style.width = `${percent}%`;
+//     }
 
-    bar.style.width = '100%';
+//     bar.style.width = '100%';
     
-    const blob = new Blob(chunks);
-    const urlObject = URL.createObjectURL(blob);
+//     const blob = new Blob(chunks);
+//     const urlObject = URL.createObjectURL(blob);
     
-    const a = document.createElement("a");
-    a.href = urlObject;
-    a.download = `${selectedGroup}.ics`; 
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+//     const a = document.createElement("a");
+//     a.href = urlObject;
+//     a.download = `${selectedGroup}.ics`; 
+//     document.body.appendChild(a);
+//     a.click();
+//     document.body.removeChild(a);
     
-    setTimeout(() => {
-        bar.style.display = 'none';
-        bar.style.width = '0%';
-    }, 1000);
-}
+//     setTimeout(() => {
+//         bar.style.display = 'none';
+//         bar.style.width = '0%';
+//     }, 1000);
+// }
 
 
 function displayQR() {
