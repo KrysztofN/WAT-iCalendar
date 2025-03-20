@@ -55,7 +55,7 @@ async function downloadCalendar() {
         bar.style.width = '0%';
 
         try {
-            await animateProgressWithPromise(0, 30);
+            await animateProgressWithPromise(0, 50);
             const baseUrl = window.location.origin;
             let finalUrl;
 
@@ -87,10 +87,11 @@ async function downloadCalendar() {
             }
 
             if (finalUrl) {
-                await animateProgressWithPromise(30, 50);
                 // await downloadWithProgress(finalUrl, bar, selectedGroup);
                 await animateProgressWithPromise(50, 100);
                 window.location.href = finalUrl;
+                bar.style.display = 'none';
+                bar.style.width = '0%';
 
             }
         } catch (error) {
