@@ -1,0 +1,38 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+    build-and-deploy:
+        runs-on: ubuntu-latest
+        steps:
+        - name: 'Checkout GitHub Action'
+          uses: actions/checkout@master
+
+        - name: 'Login via Azure CLI'
+          uses: Azure/docker-login@v1
+          with:
+              login-server: WATiCalendar.azurecr.io
+              username: ${{ SECRETS.REGISTRY_USERNAME }}
+              password: ${{ SECRETS.REGISTRY_PASSWORD }}
+
+        - run: |
+            docker build . -t WATiCalendar.azurecr.io/wat-icalendar:${{ github.sha }}
+            docker push WATiCalendar.azurecr.io/wat-icalendar:${{ github.sha }}
+
+        - name: 'Azure Login'
+          uses: azure/login@v1
+          with:
+            creds: ${{ SECRETS.AZURE_CREDENTIALS }}
+
+        - name: 'Deploy to Azure Container Instances'
+          uses: azure/aci-deploy@v1
+          with:
+            resource-group: WAT-iCalendar_group-8147
+            name: wat-icalendar
+            image: WATiCalendar.azurecr.io/wat-icalendar:${{ github.sha }}
+            ports: 80 8080
+            dns-name-label: wat-icalendar
+            registry-login-server: WATiCalendar.azurecr.io
+            registry-username: ${{ SECRETS.REGISTRY_USERNAME }}
+            registry-password: ${{ SECRETS.REGISTRY_PASSWORD }}
+            location: polandcentral
