@@ -224,7 +224,7 @@ async function extractGroupPlan(id) {
                     const subjectCode = textLines[0] || ''
                     const typeShort = textLines[1] ? textLines[1].replace(/[()]/g, '') : '';
                     const room = textLines[2] || '';
-                    const teacherShort = textLines[3] || '';
+                    const classNum = textLines[3].replace(/[^0-9.]/g, '') || '';
                     
                     plan.days[formattedDate].blocks[blockId] = {
                       blockNumber: blockNumber,
@@ -234,7 +234,7 @@ async function extractGroupPlan(id) {
                       subjectCode: subjectCode,
                       typeShort: typeShort,
                       room: room,
-                      teacherShort: teacherShort,
+                      classNum: classNum,
                       title: title,
                       startTime: plan.blocks[blockId]?.startTime,
                       endTime: plan.blocks[blockId]?.endTime
@@ -271,7 +271,7 @@ async function extractGroupPlan(id) {
 async function processBatch(groups, batchSize = 10, delayMs = 500) {
     const plans = {};
     
-    for (let i = 0; i < groups.length; i += batchSize) {
+    for (let i = 110; i < groups.length-89; i += batchSize) {
         const batch = groups.slice(i, i + batchSize);
         console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(groups.length/batchSize)} (${batch.join(', ')})`);
         
@@ -389,7 +389,7 @@ END:VTIMEZONE\n`;
 
           const uid = `${groupId}-${dateStr}-${blockId}-${Math.random().toString(36).substring(2, 15)}`;
 
-          const summary = `${block.subjectCode} (${block.typeShort}) - ${block.room}`
+          const summary = `${block.subjectCode}[${block.classNum}] (${block.typeShort}) - ${block.room}`
 
           const description = `Nazwa: ${block.subject}\\nTyp: ${block.type}\\nWykładowca: ${block.teacher}\\nSala: ${block.room}`;
 
