@@ -499,7 +499,6 @@ app.get('/api/fetch-calendar/:groupId', async (req, res) => {
     res.send(icsFile);
   } catch (error) {
     console.error('Error in download calendar route:', error);
-    res.status(500).json({ error: 'Failed to generate calendar' });
   }
 });
 
@@ -519,7 +518,6 @@ app.get('/api/download-calendar/:group', (req, res) => {
       });
   } catch (error) {
     console.error('Error in download route:', error);
-    res.status(500).json({ error: 'Failed to download calendar' });
   }
 });
 
