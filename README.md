@@ -50,5 +50,3 @@ docker build -t icalendar-wat .
 docker run -p 3000:3000 icalendar-wat
 ```
 5. Access the app at http://localhost:3000 
-
-
