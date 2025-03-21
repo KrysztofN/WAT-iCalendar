@@ -10,6 +10,7 @@ const cron = require('node-cron');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const CACHE_DIR = path.join(__dirname, 'data');
+const CALENDARS_DIR = path.join(__dirname, 'calendars');
 const GROUP_CACHE_FILE = path.join(CACHE_DIR, 'groups-cache.json');
 
 const axiosInstance = axios.create({
@@ -59,6 +60,12 @@ async function initializeCache() {
       } catch(err) {
           if (err.code !== 'EEXIST') throw err;
       }
+
+      try {
+        await fs.mkdir(CALENDARS_DIR, { recursive: true });
+    } catch(err) {
+        if (err.code !== 'EEXIST') throw err;
+    }
 
       const groups = await fetchAndCacheGroups();
 
@@ -438,7 +445,6 @@ app.get('/api/groups', async (req, res) => {
         res.json(groupsData);
     } catch(err) {
         console.error('Error in /api/groups endpoint:', err.message);
-        res.status(500).json({ error: 'Failed to retrieve groups' });
     }
 });
 
@@ -481,12 +487,17 @@ app.get('/api/plans', async (req, res) => {
         }
     } catch(err) {
         console.error('Error in /api/plans endpoint:', err.message);
-        res.status(500).json({ error: 'Failed to retrieve plans' });
     }
 });
 
 app.get('/api/fetch-calendar/:groupId', async (req, res) => {
   try {
+    try {
+        await fs.mkdir(CALENDARS_DIR, { recursive: true });
+    } catch(err) {
+        if (err.code !== 'EEXIST') throw err;
+    }
+
     const groupId = req.params.groupId;
     const sanitizedGroupId = groupId.replace(/[\\/:*?"<>|]/g, '_');
     const filePath = path.join('./calendars', `${sanitizedGroupId}.ics`);
@@ -502,8 +513,13 @@ app.get('/api/fetch-calendar/:groupId', async (req, res) => {
   }
 });
 
-app.get('/api/download-calendar/:group', (req, res) => {
+app.get('/api/download-calendar/:group', async (req, res) => {
   try {
+    try {
+        await fs.mkdir(CALENDARS_DIR, { recursive: true });
+    } catch(err) {
+        if (err.code !== 'EEXIST') throw err;
+    }
     const group = req.params.group;
     const filePath = path.join(__dirname, 'calendars', `${group}.ics`);
     console.log('Attempting to serve file from:', filePath);
@@ -523,4 +539,5 @@ app.get('/api/download-calendar/:group', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    initializeCache();
 });
