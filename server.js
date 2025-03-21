@@ -8,7 +8,7 @@ const puppeteer = require('puppeteer');
 const cron = require('node-cron');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 const CACHE_DIR = path.join(__dirname, 'data');
 const CALENDARS_DIR = path.join(__dirname, 'calendars');
 const GROUP_CACHE_FILE = path.join(CACHE_DIR, 'groups-cache.json');
@@ -268,10 +268,10 @@ async function extractGroupPlan(id) {
     }
 }
 
-async function processBatch(groups, batchSize = 10, delayMs = 500) {
+async function processBatch(groups, batchSize = 3, delayMs = 1000) {
     const plans = {};
     
-    for (let i = 110; i < groups.length-89; i += batchSize) {
+    for (let i = 0; i < groups.length; i += batchSize) {
         const batch = groups.slice(i, i + batchSize);
         console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(groups.length/batchSize)} (${batch.join(', ')})`);
         
