@@ -130,7 +130,7 @@ async function fetchAndCacheGroups(){
         throw error;
     }
 }
-
+// sus
 async function extractGroupPlan(id) {
     const baseUrl = 'https://planzajec.wcy.wat.edu.pl/pl/rozklad?grupa_id=';
     const targetUrl = baseUrl.concat(id);
