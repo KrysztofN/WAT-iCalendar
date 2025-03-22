@@ -5,7 +5,7 @@ https://github.com/user-attachments/assets/dbbde74b-5eb3-4979-ab2a-2675589f19fd
 This tool was built to help WAT students of WCY department import their timetables into their calendars!
 
 ### How does it work?
-1. First visit website: [icalendar-wat](https://wat-icalendar.azurewebsites.net/)
+1. First visit website: [wat-icalendar](https://wat-icalendar.azurewebsites.net/)
 2. Choose your group number
 3. Download the plan or scan the QR code to get it!
 4. The downloaded file in format 'groupID.ics' can be imported to any calendar.
