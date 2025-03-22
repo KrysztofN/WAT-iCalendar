@@ -1,5 +1,5 @@
+https://github.com/user-attachments/assets/dbbde74b-5eb3-4979-ab2a-2675589f19fd
 
-https://github.com/user-attachments/assets/991c32e3-0fe8-4380-aafd-2b2800364763
 # iCalendar-WAT
 
 This tool was built to help WAT students of WCY department import their timetables into their calendars!
@@ -25,11 +25,11 @@ Immediately after download,  **IOS** devices will open up the calendar where you
 On **Android** devices manual import may be needed. 
 
 ---
+
 ### SHOWCASE
 <p float="left">
     <img src = "https://github.com/KrysztofN/WAT-iCalendar/blob/main/public/assets/calendar_add.png" width="200" height="400">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
     <img src = "https://github.com/KrysztofN/WAT-iCalendar/blob/main/public/assets/calendar_view.png" width="200" height="400">
-    Uploading ScreenRecording_03-21-2025 17-38-36_1 (1).mp4…
 </p>
 
 ---
