@@ -14,7 +14,7 @@ const CALENDARS_DIR = path.join(__dirname, 'calendars');
 const GROUP_CACHE_FILE = path.join(CACHE_DIR, 'groups-cache.json');
 
 const axiosInstance = axios.create({
-  timeout: 30000, 
+  timeout: 60000, 
   headers: {
     'Connection': 'keep-alive',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -141,7 +141,7 @@ async function extractGroupPlan(id) {
     try {
       console.log(`Fetching plan for group ${id} using Puppeteer...`);
       browser = await puppeteer.launch({
-        // executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
         headless: 'new',
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
         timeout: 0
@@ -149,7 +149,7 @@ async function extractGroupPlan(id) {
       
       const page = await browser.newPage();
       
-      await page.setDefaultNavigationTimeout(60000);
+      await page.setDefaultNavigationTimeout(80000);
       
       await page.goto(targetUrl, { waitUntil: 'networkidle0' });
       
@@ -269,21 +269,27 @@ async function extractGroupPlan(id) {
     }
 }
 
-async function processBatch(groups, batchSize = 10, delayMs = 1000) {
+async function processBatch(groups, batchSize = 10) {
     const plans = {};
     
-    for (let i = 110; i < groups.length-89; i += batchSize) {
+    for (let i = 0; i < /*groups.length*/ 20 /*FOR TESTING ONLY*/; i += batchSize) {
         const batch = groups.slice(i, i + batchSize);
+        let count = 0;
         console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(groups.length/batchSize)} (${batch.join(', ')})`);
         
         const batchPromises = batch.map(async (group) => {
             try {
                 const plan = await extractGroupPlan(group);
+                count += 1;
+                console.log(`${group} fetched successfully.`);
                 return { group, plan };
             } catch (err) {
                 console.log(`Error processing group ${group}:`, err.message);
+                if (batchSize > 2) batchSize -= 2;
+                count += 1;
                 return { group, error: err.message };
             }
+            
         });
         
         const results = await Promise.all(batchPromises);
@@ -294,10 +300,7 @@ async function processBatch(groups, batchSize = 10, delayMs = 1000) {
             }
         });
         
-        if (i + batchSize < groups.length) {
-            console.log(`Waiting ${delayMs}ms before next batch...`);
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
+        while (count < batchSize) { ; }
     }
     
     return plans;
@@ -326,13 +329,14 @@ async function fetchAndCachePlans(groups) {
 
 // ICS FILES GENERATION
 function generateIcsFiles(plansData, outputDir = './calendars'){
+  console.log("Generating ICS files.");
     try {
       try {
         fs.mkdir(outputDir, {recursive : true});
       } catch (err) {
         if (err.code !== 'EEXIST') throw err;
       }
-  
+      let i = 0;
       Object.keys(plansData).forEach(groupId => {
           const groupPlan = plansData[groupId];
           const icsContent = generateIcsContent(groupPlan, groupId);
@@ -341,6 +345,10 @@ function generateIcsFiles(plansData, outputDir = './calendars'){
   
           const filePath = path.join(outputDir, `${sanitizedGroupId}.ics`);
           fs.writeFile(filePath, icsContent);
+          i += 1;
+          if (i % 10 == 0) {
+            console.log(i, ' files generated...');
+          }
       });
       
     } catch(err){
