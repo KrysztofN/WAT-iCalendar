@@ -269,7 +269,7 @@ async function extractGroupPlan(id) {
     }
 }
 
-async function processBatch(groups, batchSize = 3) {
+async function processBatch(groups, batchSize = 4) {
     const plans = {};
     
     for (let i = 0; i < groups.length; i += batchSize) {
