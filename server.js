@@ -14,7 +14,7 @@ const CALENDARS_DIR = path.join(__dirname, 'calendars');
 const GROUP_CACHE_FILE = path.join(CACHE_DIR, 'groups-cache.json');
 
 const axiosInstance = axios.create({
-  timeout: 30000, 
+  timeout: 60000, 
   headers: {
     'Connection': 'keep-alive',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -25,7 +25,8 @@ app.use(cors());
 app.use(express.static('public'));
 
 // CRON JOBS
-cron.schedule('0 0 */3 * *', ()=> {
+// Pobiera plan codziennie rano o 3:00
+cron.schedule('0 3 */1 * *', ()=> {
     console.log('Running daily cache update...');
     initializeCache().then(()=> console.log('Daily update completed')).catch(err => console.error('Error in daily update'));
 });
@@ -130,7 +131,7 @@ async function fetchAndCacheGroups(){
         throw error;
     }
 }
-// sus
+
 async function extractGroupPlan(id) {
     const baseUrl = 'https://planzajec.wcy.wat.edu.pl/pl/rozklad?grupa_id=';
     const targetUrl = baseUrl.concat(id);
@@ -140,7 +141,7 @@ async function extractGroupPlan(id) {
     try {
       console.log(`Fetching plan for group ${id} using Puppeteer...`);
       browser = await puppeteer.launch({
-        // executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
         headless: 'new',
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
         timeout: 0
@@ -148,7 +149,7 @@ async function extractGroupPlan(id) {
       
       const page = await browser.newPage();
       
-      await page.setDefaultNavigationTimeout(60000);
+      await page.setDefaultNavigationTimeout(80000);
       
       await page.goto(targetUrl, { waitUntil: 'networkidle0' });
       
@@ -224,7 +225,7 @@ async function extractGroupPlan(id) {
                     const subjectCode = textLines[0] || ''
                     const typeShort = textLines[1] ? textLines[1].replace(/[()]/g, '') : '';
                     const room = textLines[2] || '';
-                    const classNum = textLines[3].replace(/[^0-9.]/g, '') || '';
+                    const classNum = textLines[3].replace(/[^0-9]/g, '') || '';
                     
                     plan.days[formattedDate].blocks[blockId] = {
                       blockNumber: blockNumber,
@@ -268,21 +269,27 @@ async function extractGroupPlan(id) {
     }
 }
 
-async function processBatch(groups, batchSize = 3, delayMs = 1000) {
+async function processBatch(groups, batchSize = 3) {
     const plans = {};
     
     for (let i = 0; i < groups.length; i += batchSize) {
         const batch = groups.slice(i, i + batchSize);
+        let count = 0;
         console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(groups.length/batchSize)} (${batch.join(', ')})`);
         
         const batchPromises = batch.map(async (group) => {
             try {
                 const plan = await extractGroupPlan(group);
+                count += 1;
+                console.log(`${group} fetched successfully.`);
                 return { group, plan };
             } catch (err) {
                 console.log(`Error processing group ${group}:`, err.message);
+                if (batchSize > 2) batchSize -= 2;
+                count += 1;
                 return { group, error: err.message };
             }
+            
         });
         
         const results = await Promise.all(batchPromises);
@@ -293,10 +300,7 @@ async function processBatch(groups, batchSize = 3, delayMs = 1000) {
             }
         });
         
-        if (i + batchSize < groups.length) {
-            console.log(`Waiting ${delayMs}ms before next batch...`);
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
+        while (count < batchSize) { ; }
     }
     
     return plans;
@@ -325,13 +329,14 @@ async function fetchAndCachePlans(groups) {
 
 // ICS FILES GENERATION
 function generateIcsFiles(plansData, outputDir = './calendars'){
+  console.log("Generating ICS files.");
     try {
       try {
         fs.mkdir(outputDir, {recursive : true});
       } catch (err) {
         if (err.code !== 'EEXIST') throw err;
       }
-  
+      let i = 0;
       Object.keys(plansData).forEach(groupId => {
           const groupPlan = plansData[groupId];
           const icsContent = generateIcsContent(groupPlan, groupId);
@@ -340,6 +345,10 @@ function generateIcsFiles(plansData, outputDir = './calendars'){
   
           const filePath = path.join(outputDir, `${sanitizedGroupId}.ics`);
           fs.writeFile(filePath, icsContent);
+          i += 1;
+          if (i % 10 == 0) {
+            console.log(i, ' files generated...');
+          }
       });
       
     } catch(err){
@@ -387,7 +396,7 @@ END:VTIMEZONE\n`;
           const startDateTime = formatDateTime(dateStr, block.startTime);
           const endDateTime = formatDateTime(dateStr, block.endTime);
 
-          const uid = `${groupId}-${dateStr}-${blockId}-${Math.random().toString(36).substring(2, 15)}`;
+          const uid = `${groupId}-${dateStr}-${blockId}`;
 
           const summary = `${block.subjectCode}[${block.classNum}] (${block.typeShort}) - ${block.room}`
 
@@ -448,94 +457,106 @@ app.get('/api/groups', async (req, res) => {
     }
 });
 
-app.get('/api/plans', async (req, res) => {
-    try {
-        try {
-            await fs.mkdir(CACHE_DIR, { recursive: true });
-        } catch(err) {
-            if (err.code !== 'EEXIST') throw err;
-        }
+// app.get('/api/plans', async (req, res) => {
+//     try {
+//         try {
+//             await fs.mkdir(CACHE_DIR, { recursive: true });
+//         } catch(err) {
+//             if (err.code !== 'EEXIST') throw err;
+//         }
 
-        let plansData;
+//         let plansData;
 
-        try {
-            const cacheData = await fs.readFile(PLAN_CACHE_FILE, 'utf8');
-            plansData = JSON.parse(cacheData);
-            console.log(`Retrieved ${Object.keys(plansData.plans).length} plans from cache`);
-            // check if plans exist
-        } catch (cacheError) {
-            console.log('Cache miss for plans, fetching fresh data');
-            try {
-                const groupsData = await fs.readFile(GROUP_CACHE_FILE, 'utf8');
-                const { groups } = JSON.parse(groupsData);
-                const plans = await fetchAndCachePlans(groups);
-                plansData = {
-                    timestamp: new Date().toISOString(),
-                    plans: plans
-                };
-                await generateIcsFiles(plans);
-            } catch (groupsError) {
-                console.log('No groups cache found, fetching groups first');
-                const groups = await fetchAndCacheGroups();
-                const plans = await fetchAndCachePlans(groups);
-                plansData = {
-                  timestamp: new Date().toISOString(),
-                  plans: plans
-                };
-                await generateIcsFiles(plans);
-            }
-        }
-    } catch(err) {
-        console.error('Error in /api/plans endpoint:', err.message);
-    }
-});
+//         try {
+//             const cacheData = await fs.readFile(PLAN_CACHE_FILE, 'utf8');
+//             plansData = JSON.parse(cacheData);
+//             console.log(`Retrieved ${Object.keys(plansData.plans).length} plans from cache`);
+//             // check if plans exist
+//         } catch (cacheError) {
+//             console.log('Cache miss for plans, fetching fresh data');
+//             try {
+//                 const groupsData = await fs.readFile(GROUP_CACHE_FILE, 'utf8');
+//                 const { groups } = JSON.parse(groupsData);
+//                 const plans = await fetchAndCachePlans(groups);
+//                 plansData = {
+//                     timestamp: new Date().toISOString(),
+//                     plans: plans
+//                 };
+//                 await generateIcsFiles(plans);
+//             } catch (groupsError) {
+//                 console.log('No groups cache found, fetching groups first');
+//                 const groups = await fetchAndCacheGroups();
+//                 const plans = await fetchAndCachePlans(groups);
+//                 plansData = {
+//                   timestamp: new Date().toISOString(),
+//                   plans: plans
+//                 };
+//                 await generateIcsFiles(plans);
+//             }
+//         }
+//     } catch(err) {
+//         console.error('Error in /api/plans endpoint:', err.message);
+//     }
+// });
 
 app.get('/api/fetch-calendar/:groupId', async (req, res) => {
-  try {
     try {
-        await fs.mkdir(CALENDARS_DIR, { recursive: true });
-    } catch(err) {
-        if (err.code !== 'EEXIST') throw err;
+      const groupId = req.params.groupId;
+      const sanitizedGroupId = groupId.replace(/[\\/:*?"<>|]/g, '_');
+      const filePath = path.join(__dirname, 'calendars', `${sanitizedGroupId}.ics`);
+      
+      try {
+        await fs.access(filePath, fs.constants.F_OK);
+        
+        const icsFile = await fs.readFile(filePath, 'utf8');
+        
+        res.setHeader('Content-Type', 'text/calendar');
+        res.setHeader('Content-Disposition', `attachment; filename="${sanitizedGroupId}.ics"`);
+        
+        res.send(icsFile);
+      } catch (fileError) {
+        res.redirect(`/api/download-calendar/${groupId}`);
+      }
+    } catch (error) {
+      console.error('Error in fetch calendar route:', error);
+      res.redirect(`/api/download-calendar/${req.params.groupId}`);
     }
-
-    const groupId = req.params.groupId;
-    const sanitizedGroupId = groupId.replace(/[\\/:*?"<>|]/g, '_');
-    const filePath = path.join('./calendars', `${sanitizedGroupId}.ics`);
-
-    const icsFile = await fs.readFile(filePath, 'utf8');
-    
-    res.setHeader('Content-Type', 'text/calendar');
-    res.setHeader('Content-Disposition', `attachment; filename="${sanitizedGroupId}.ics"`);
-    
-    res.send(icsFile);
-  } catch (error) {
-    console.error('Error in download calendar route:', error);
-  }
-});
-
-app.get('/api/download-calendar/:group', async (req, res) => {
-  try {
+  });
+  
+  app.get('/api/download-calendar/:group', async (req, res) => {
     try {
-        await fs.mkdir(CALENDARS_DIR, { recursive: true });
-    } catch(err) {
-        if (err.code !== 'EEXIST') throw err;
+      const group = req.params.group;
+      const sanitizedGroup = group.replace(/[\\/:*?"<>|]/g, '_');
+      const filePath = path.join(__dirname, 'calendars', `${sanitizedGroup}.ics`);
+      
+      console.log('Attempting to serve file from:', filePath);
+      
+      try {
+        await fs.access(filePath, fs.constants.F_OK);
+        res.download(filePath, `${sanitizedGroup}.ics`);
+      } catch (fileError) {
+        try {
+          console.log(`File not found: ${filePath}, attempting to generate`);
+          
+          const groupData = await fetchAndCacheGroups();
+          
+          const plan = await extractGroupPlan(group);
+          
+          const icsContent = generateIcsContent(plan, group);
+          await fs.mkdir(path.dirname(filePath), { recursive: true });
+          await fs.writeFile(filePath, icsContent);
+          
+          res.download(filePath, `${sanitizedGroup}.ics`);
+        } catch (genError) {
+          console.error(`Failed to generate calendar for ${group}:`, genError);
+          res.status(200).send("Nie można wygenerować kalendarza. Proszę spróbować ponownie później.");
+        }
+      }
+    } catch (error) {
+      console.error('Error in download route:', error);
+      res.status(200).send("Wystąpił problem z pobieraniem kalendarza. Proszę spróbować ponownie później.");
     }
-    const group = req.params.group;
-    const filePath = path.join(__dirname, 'calendars', `${group}.ics`);
-    console.log('Attempting to serve file from:', filePath);
-    
-    fs.access(filePath, fs.constants.F_OK)
-      .then(() => {
-        res.download(filePath, `${group}.ics`);
-      })
-      .catch((err) => {
-        console.error(`File not found: ${filePath}`, err);
-        res.status(404).json({ error: 'Calendar file not found' });
-      });
-  } catch (error) {
-    console.error('Error in download route:', error);
-  }
-});
+  });
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

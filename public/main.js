@@ -41,66 +41,6 @@ async function fetchAndPopulateGroups(){
     }
 }
 
-async function downloadCalendar() {
-    const downloadButton = document.querySelector('button.step1');
-    
-    downloadButton.addEventListener('click', async () => {
-        if (!selectedGroup) {
-            alert('Najpierw wybierz grupę');
-            return;
-        }
-
-        const bar = document.getElementById("bar");
-        bar.style.display = 'block';
-        bar.style.width = '0%';
-
-        try {
-            await animateProgressWithPromise(0, 50);
-            const baseUrl = window.location.origin;
-            let finalUrl;
-
-            try {
-                const primaryUrl = `${baseUrl}/api/fetch-calendar/${selectedGroup}`;
-                const primaryResponse = await fetch(primaryUrl, { method: 'HEAD' });
-
-                if (primaryResponse.ok) {
-                    finalUrl = primaryUrl;
-                } else {
-                    throw new Error("Primary endpoint failed");
-                }
-            } catch (err) {
-                try {
-                    const fallbackUrl = `${baseUrl}/api/download-calendar/${selectedGroup}`;
-                    const fallbackResponse = await fetch(fallbackUrl, { method: 'HEAD' });
-
-                    if (fallbackResponse.ok) {
-                        finalUrl = fallbackUrl;
-                    } else {
-                        throw new Error("Both endpoints failed");
-                    }
-                } catch (fallbackErr) {
-                    console.error("All endpoints failed:", fallbackErr);
-                    alert("Nie można wygenerować kalendarza. Spróbuj ponownie później.");
-                    bar.style.display = 'none';
-                    return;
-                }
-            }
-
-            if (finalUrl) {
-                // await downloadWithProgress(finalUrl, bar, selectedGroup);
-                await animateProgressWithPromise(50, 100);
-                window.location.href = finalUrl;
-                bar.style.display = 'none';
-                bar.style.width = '0%';
-
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Błąd pobierania pliku.");
-        }
-    });
-}
-
 // async function downloadWithProgress(url, bar, selectedGroup) {
 //     const response = await fetch(url);
     
@@ -150,6 +90,46 @@ async function downloadCalendar() {
 // }
 
 
+async function downloadCalendar() {
+    const downloadButton = document.querySelector('button.step1');
+    
+    downloadButton.addEventListener('click', async () => {
+        if (!selectedGroup) {
+            alert('Najpierw wybierz grupę');
+            return;
+        }
+
+        const bar = document.getElementById("bar");
+        bar.style.display = 'block';
+        bar.style.width = '0%';
+
+        try {
+            await animateProgressWithPromise(0, 50);
+            const baseUrl = window.location.origin;
+            
+            const calendarUrl = `${baseUrl}/api/fetch-calendar/${selectedGroup}`;
+            
+            const response = await fetch(calendarUrl, { 
+                method: 'HEAD',
+                redirect: 'follow'
+            });
+            
+            if (response.ok) {
+                await animateProgressWithPromise(50, 100);
+                window.location.href = calendarUrl;
+            } else {
+                throw new Error("Failed to fetch calendar");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Nie można wygenerować kalendarza. Spróbuj ponownie później.");
+        } finally {
+            bar.style.display = 'none';
+            bar.style.width = '0%';
+        }
+    });
+}
+
 function displayQR() {
     const generatedButton = document.querySelector('button.step2');
     
@@ -163,78 +143,36 @@ function displayQR() {
         bar.style.display = 'block'; 
         bar.style.width = '0%';
         
-        let shouldHideBar = false;
-        
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
         try {
-            await animateProgressWithPromise(0, 30);
-            bar.style.display = 'block';
+            await animateProgressWithPromise(0, 50);
             
             const baseUrl = window.location.origin;
-            let finalUrl;
+            const calendarUrl = `${baseUrl}/api/fetch-calendar/${selectedGroup}`;
             
-            try {
-                const primaryUrl = `${baseUrl}/api/fetch-calendar/${selectedGroup}`;
-                const primaryResponse = await fetch(primaryUrl, { method: 'HEAD' });
-                
-                if (primaryResponse.ok) {
-                    finalUrl = primaryUrl;
-                    
-                    bar.style.display = 'block';
-                    await animateProgressWithPromise(30, 70);
-                } else {
-                    shouldHideBar = true;
-                    throw new Error("Primary endpoint failed");
-                }
-            } catch (err) {
-                if (!shouldHideBar) {
-                    bar.style.display = 'block';
-                }
-                
-                try {
-                    const fallbackUrl = `${baseUrl}/api/download-calendar/${selectedGroup}`;
-                    const fallbackResponse = await fetch(fallbackUrl, { method: 'HEAD' });
-                    
-                    if (fallbackResponse.ok) {
-                        finalUrl = fallbackUrl;
-                        
-                        bar.style.display = 'block';
-                        await animateProgressWithPromise(30, 70);
-                    } else {
-                        shouldHideBar = true;
-                        throw new Error("Both endpoints failed");
-                    }
-                } catch (fallbackErr) {
-                    console.error("All endpoints failed:", fallbackErr);
-                    alert("Nie można wygenerować kalendarza. Spróbuj ponownie później.");
-                    shouldHideBar = true;
-                    return;
-                }
-            }
+            const response = await fetch(calendarUrl, { 
+                method: 'HEAD',
+                redirect: 'follow'
+            });
             
-            if (finalUrl) {
-                bar.style.display = 'block';
-                await animateProgressWithPromise(70, 100);
+            if (response.ok) {
+                await animateProgressWithPromise(50, 100);
                 
                 document.querySelector('.QR-Code').style.display = 'block';
                 document.getElementById("qrcode").innerHTML = '';
                 new QRCode(document.getElementById("qrcode"), {
-                    text: finalUrl,
+                    text: calendarUrl,
                     width: 128,
                     height: 128,
                 });
-                
-                setTimeout(() => {
-                    bar.style.display = 'none';
-                    bar.style.width = '0%';
-                }, 500);
+            } else {
+                throw new Error("Failed to fetch calendar");
             }
+        } catch (error) {
+            console.error(error);
+            alert("Nie można wygenerować kodu QR. Spróbuj ponownie później.");
         } finally {
-            if (shouldHideBar) {
-                bar.style.display = 'none';
-                bar.style.width = '0%';
-            }
+            bar.style.display = 'none';
+            bar.style.width = '0%';
         }
     });
 }
