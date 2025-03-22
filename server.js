@@ -269,10 +269,10 @@ async function extractGroupPlan(id) {
     }
 }
 
-async function processBatch(groups, batchSize = 3, delayMs = 1000) {
+async function processBatch(groups, batchSize = 10, delayMs = 1000) {
     const plans = {};
     
-    for (let i = 0; i < groups.length; i += batchSize) {
+    for (let i = 110; i < groups.length-89; i += batchSize) {
         const batch = groups.slice(i, i + batchSize);
         console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(groups.length/batchSize)} (${batch.join(', ')})`);
         
