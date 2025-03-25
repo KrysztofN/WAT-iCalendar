@@ -1,5 +1,9 @@
 FROM node:23
 
+WORKDIR /home/iCalendar
+
+COPY entrypoint.sh ./
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
   fonts-liberation \
   libasound2 \
@@ -20,19 +24,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libxshmfence1 \
   libglu1-mesa \
   chromium \
+  && apt-get install -y --no-install-recommends dialog \
+  && apt-get install -y --no-install-recommends openssh-server \
+  && echo "root:Docker!" | chpasswd \
+  && chmod u+x ./entrypoint.sh \
   && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* 
 
-WORKDIR /iCalendar
-
-COPY package*.json ./
-RUN npm install
-
+COPY ./sshd_config /etc/ssh/
+COPY ./package*.json ./
 COPY . .
 
-EXPOSE 8080
+RUN npm install
+
+EXPOSE 2222 8080 80
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
 
-CMD ["npm", "start"]
+ENTRYPOINT [ "./entrypoint.sh" ]

@@ -1,3 +1,7 @@
 node_modules
+calendars
+data
+Makefile
+*.md
 .cache
 server_copy.js
