@@ -3,6 +3,7 @@ FROM node:23
 WORKDIR /home/iCalendar
 
 COPY entrypoint.sh ./
+RUN chmod u+x ./entrypoint.sh 
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   fonts-liberation \
@@ -27,7 +28,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && apt-get install -y --no-install-recommends dialog \
   && apt-get install -y --no-install-recommends openssh-server \
   && echo "root:Docker!" | chpasswd \
-  && chmod u+x ./entrypoint.sh \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/* 
 
@@ -35,7 +35,7 @@ COPY ./sshd_config /etc/ssh/
 COPY ./package*.json ./
 COPY . .
 
-RUN npm install
+RUN npm install 
 
 EXPOSE 2222 8080 80
 
